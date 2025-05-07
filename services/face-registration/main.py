@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import routes
 from routes.register import router as register_router
 from routes.recognize import router as recognize_router
+from routes.faces import router as faces_router
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +41,7 @@ app.add_middleware(
 # Include routers
 app.include_router(register_router, tags=["registration"])
 app.include_router(recognize_router, tags=["recognition"])
+app.include_router(faces_router, tags=["face-management"])
 
 @app.get("/")
 async def root():
