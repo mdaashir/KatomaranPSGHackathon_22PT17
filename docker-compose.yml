@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  face-recognition:
+    build: ./services/face-registration
+    container_name: face-recognition-service
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./data:/app/data
+    networks:
+      - face-recognition-network
+    restart: unless-stopped
+
+  backend:
+    build: ./apps/backend
+    container_name: backend-service
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - face-recognition
+    networks:
+      - face-recognition-network
+    environment:
+      - PYTHON_SERVICE_URL=http://face-recognition:8000
+      - PORT=3001
+    restart: unless-stopped
+
+  frontend:
+    build: ./apps/frontend
+    container_name: frontend-service
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+    networks:
+      - face-recognition-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+networks:
+  face-recognition-network:
+    driver: bridge
+
+volumes:
+  data:
+  logs:
