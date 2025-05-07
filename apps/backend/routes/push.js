@@ -1,5 +1,5 @@
 const express = require('express');
-const { appLogger, logRegistration } = require('../utils/logger');
+const { appLogger, logMatch } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -33,8 +33,8 @@ router.post('/push', (req, res) => {
 				timestamp: timestamp || new Date().toISOString(),
 			};
 
-			// Log the match event
-			logRegistration(name, 'recognized');
+			// Log the match event to the dedicated matches.log file
+			logMatch(name, matchData.timestamp);
 
 			// Broadcast to all connected clients
 			wsServer.broadcast(matchData);
