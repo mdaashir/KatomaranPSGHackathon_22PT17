@@ -5,10 +5,11 @@ import './App.css';
 import FaceRegistrationForm from './components/FaceRegistrationForm';
 import FaceRecognitionLive from './components/FaceRecognitionLive';
 import Admin from './pages/Admin';
+import ChatBot from './pages/ChatBot';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
-	const [activeTab, setActiveTab] = useState('register'); // 'register', 'recognize', or 'admin'
+	const [activeTab, setActiveTab] = useState('register'); // 'register', 'recognize', 'admin', or 'chatbot'
 
 	return (
 		<div className='app-container'>
@@ -33,6 +34,11 @@ function App() {
 						onClick={() => setActiveTab('admin')}>
 						Admin
 					</button>
+					<button
+						className={`tab-button ${activeTab === 'chatbot' ? 'active' : ''}`}
+						onClick={() => setActiveTab('chatbot')}>
+						AI Assistant
+					</button>
 				</div>
 			</header>
 
@@ -41,6 +47,7 @@ function App() {
 					{activeTab === 'register' && <FaceRegistrationForm />}
 					{activeTab === 'recognize' && <FaceRecognitionLive />}
 					{activeTab === 'admin' && <Admin />}
+					{activeTab === 'chatbot' && <ChatBot />}
 				</ErrorBoundary>
 			</main>
 

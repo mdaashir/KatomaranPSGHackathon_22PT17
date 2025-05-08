@@ -1,0 +1,23 @@
+[project]
+name = "rag-engine"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faiss-cpu>=1.11.0",
+    "fastapi>=0.115.12",
+    "langchain>=0.3.25",
+    "langchain-community>=0.3.23",
+    "langchain-openai>=0.3.16",
+    "markdown>=3.8",
+    "numpy>=2.2.5",
+    "openai>=1.77.0",
+    "pydantic>=2.11.4",
+    "pypdf>=5.4.0",
+    "python-dotenv>=1.1.0",
+    "python-multipart>=0.0.20",
+    "tiktoken>=0.9.0",
+    "unstructured>=0.17.2",
+    "uvicorn>=0.34.2",
+]

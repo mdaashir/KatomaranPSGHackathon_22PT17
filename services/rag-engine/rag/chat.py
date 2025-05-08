@@ -1,123 +1,81 @@
 import os
-import json
 import logging
-from typing import List, Dict, Any, AsyncGenerator
+import asyncio
+from typing import AsyncGenerator, Any, List, Optional
 
-# LangChain imports
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.schema import Document
-
-# Local imports
-from .index import get_vectorstore, search_documents
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.documents import Document
 
 logger = logging.getLogger(__name__)
 
-# Set OpenAI API key from environment variable
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+# Define the number of relevant documents to retrieve for each query
+TOP_K = 4
 
-# Define the prompt template for RAG
-RAG_PROMPT_TEMPLATE = """
-You are a helpful AI assistant integrated into an event management system.
-Answer the user's question based on the provided context.
-If you don't know the answer or can't find it in the context, say so politely.
-Do not make up information or hallucinate facts.
+# Template for generating answers based on retrieved context
+PROMPT_TEMPLATE = """You are a helpful AI assistant for the Katomaran Hackathon event.
+Answer the question based only on the following context:
 
-Context:
 {context}
 
-Question:
-{query}
+Question: {query}
 
-Answer (be concise and helpful):
+Answer the question concisely and accurately using only information from the provided context.
+If the context doesn't contain the answer, respond with "I don't have information about that in my knowledge base."
 """
 
-# Create the prompt
-QA_PROMPT = PromptTemplate(
-    template=RAG_PROMPT_TEMPLATE,
-    input_variables=["context", "query"],
-)
-
-class CustomStreamingCallbackHandler(StreamingStdOutCallbackHandler):
-    """Custom callback handler for streaming responses"""
-
-    def __init__(self):
-        super().__init__()
-        self.tokens = []
-
-    def on_llm_new_token(self, token: str, **kwargs):
-        self.tokens.append(token)
-
-    def get_tokens(self) -> List[str]:
-        return self.tokens
-
-def format_docs(docs: List[Document]) -> str:
-    """Format documents into a context string"""
+async def format_docs(docs: List[Document]) -> str:
+    """Format a list of documents into a string."""
     return "\n\n".join([doc.page_content for doc in docs])
 
-async def create_chat_response(query: str) -> str:
+async def stream_answer(query: str, vector_store: Any) -> AsyncGenerator[str, None]:
     """
-    Create a non-streaming response using RAG
+    Stream a response to a query using RAG.
+
+    Args:
+        query: The user's query
+        vector_store: The vector store to query
+
+    Yields:
+        str: Chunks of the generated answer
     """
     try:
-        # Get the vector store
-        vectorstore = await get_vectorstore()
+        # Set up the OpenAI language model
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.warning("OPENAI_API_KEY not found in environment variables")
 
-        # Set up the LLM
-        llm = ChatOpenAI(
-            model_name="gpt-4-turbo",  # Use "gpt-3.5-turbo" for cost savings
-            openai_api_key=OPENAI_API_KEY,
+        model = ChatOpenAI(
+            model="gpt-4o",  # Use desired model: gpt-4-turbo, gpt-3.5-turbo, etc.
+            streaming=True,
             temperature=0.7,
-            verbose=True
         )
 
-        # Create the RAG pipeline
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
-        rag_chain = (
-            {"context": retriever | format_docs, "query": RunnablePassthrough()}
-            | QA_PROMPT
-            | llm
+        # Create a prompt template
+        prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+
+        # Retrieve relevant documents from the vector store
+        docs = await asyncio.to_thread(
+            lambda: vector_store.similarity_search(query, k=TOP_K)
+        )
+
+        # Format the documents into context
+        context = await format_docs(docs)
+
+        # Create the RAG chain
+        chain = (
+            {"context": lambda x: context, "query": RunnablePassthrough()}
+            | prompt
+            | model
             | StrOutputParser()
         )
 
-        # Execute the chain
-        response = await rag_chain.ainvoke(query)
-        return response
-
-    except Exception as e:
-        logger.error(f"Error generating chat response: {str(e)}")
-        return "I'm sorry, I encountered an error while processing your request."
-
-async def stream_chat_response(query: str) -> AsyncGenerator[str, None]:
-    """
-    Stream a response using RAG
-    """
-    try:
-        # Get relevant documents
-        docs = await search_documents(query, k=5)
-        context = format_docs(docs)
-
-        # Set up the streaming LLM
-        llm = ChatOpenAI(
-            model_name="gpt-4-turbo",  # Use "gpt-3.5-turbo" for cost savings
-            openai_api_key=OPENAI_API_KEY,
-            temperature=0.7,
-            streaming=True,
-            verbose=True
-        )
-
-        # Prepare the prompt
-        prompt = QA_PROMPT.format(context=context, query=query)
-
         # Stream the response
-        async for chunk in llm.astream(prompt):
-            if hasattr(chunk, 'content'):
-                yield json.dumps({"content": chunk.content})
+        async for chunk in chain.astream(query):
+            yield chunk
 
     except Exception as e:
-        logger.error(f"Error streaming chat response: {str(e)}")
-        yield json.dumps({"content": "I'm sorry, I encountered an error while processing your request."})
+        logger.error(f"Error in stream_answer: {str(e)}")
+        yield f"Error generating response: {str(e)}"

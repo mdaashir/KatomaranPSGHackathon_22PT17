@@ -1,125 +1,122 @@
 import os
-import asyncio
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Optional, Dict
+import glob
 
-# LangChain imports
-from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.document_loaders import DirectoryLoader, TextLoader, PDFLoader, CSVLoader, Docx2txtLoader, UnstructuredMarkdownLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import (
+    TextLoader,
+    PDFMinerLoader,
+    UnstructuredMarkdownLoader,
+)
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 
-# Set OpenAI API key from environment variable
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-if not OPENAI_API_KEY:
-    logger.warning("OPENAI_API_KEY environment variable not set")
+# Define paths for documents and vector store
+DOCS_DIR = os.path.join(os.getcwd(), '../..', 'docs')
+VECTOR_STORE_PATH = os.path.join(os.getcwd(), 'vector_store')
 
-# Configure paths
-DOCS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "docs")
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "vectorstore")
+# Constants for document splitting
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
 
-# Global vectorstore instance
-_vectorstore = None
+def get_document_loader(file_path: str):
+    """Return the appropriate document loader based on file extension."""
+    ext = os.path.splitext(file_path)[1].lower()
 
-async def load_documents() -> List[Any]:
-    """
-    Load documents from the docs directory
-    """
-    logger.info(f"Loading documents from {DOCS_DIR}")
+    if ext == '.pdf':
+        return PDFMinerLoader(file_path)
+    elif ext == '.md':
+        return UnstructuredMarkdownLoader(file_path)
+    elif ext in ['.txt', '.csv', '.json']:
+        return TextLoader(file_path)
+    else:
+        logger.warning(f"Unsupported file extension for {file_path}")
+        return None
 
-    # Ensure docs directory exists
-    if not os.path.exists(DOCS_DIR):
-        logger.warning(f"Documents directory not found: {DOCS_DIR}")
-        os.makedirs(DOCS_DIR, exist_ok=True)
-        return []
-
-    loaders = [
-        DirectoryLoader(DOCS_DIR, glob="**/*.txt", loader_cls=TextLoader),
-        DirectoryLoader(DOCS_DIR, glob="**/*.pdf", loader_cls=PDFLoader),
-        DirectoryLoader(DOCS_DIR, glob="**/*.csv", loader_cls=CSVLoader),
-        DirectoryLoader(DOCS_DIR, glob="**/*.docx", loader_cls=Docx2txtLoader),
-        DirectoryLoader(DOCS_DIR, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader),
-    ]
-
+def load_documents(docs_dir: str = DOCS_DIR) -> List[Document]:
+    """Load all supported documents from the specified directory."""
     documents = []
-    for loader in loaders:
-        try:
-            docs = loader.load()
-            logger.info(f"Loaded {len(docs)} documents with {loader.__class__.__name__}")
-            documents.extend(docs)
-        except Exception as e:
-            logger.error(f"Error loading documents with {loader.__class__.__name__}: {str(e)}")
 
-    logger.info(f"Total documents loaded: {len(documents)}")
+    # Define supported file extensions
+    extensions = ['*.pdf', '*.md', '*.txt']
+
+    for ext in extensions:
+        # Get all matching files in docs directory and its subdirectories
+        for file_path in glob.glob(os.path.join(docs_dir, '**', ext), recursive=True):
+            try:
+                loader = get_document_loader(file_path)
+                if loader:
+                    logger.info(f"Loading document: {file_path}")
+                    docs = loader.load()
+                    documents.extend(docs)
+            except Exception as e:
+                logger.error(f"Error loading {file_path}: {str(e)}")
+
+    logger.info(f"Loaded {len(documents)} documents")
     return documents
 
-async def create_vectorstore() -> FAISS:
-    """
-    Create a new vector store from documents
-    """
-    # Load documents
-    documents = await load_documents()
-
-    if not documents:
-        logger.warning("No documents loaded. Using empty vector store.")
-        # Create embeddings with OpenAI
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-        # Create empty FAISS index
-        return FAISS.from_texts(["Empty document store"], embeddings)
-
-    # Split documents into chunks
+def split_documents(documents: List[Document]) -> List[Document]:
+    """Split documents into chunks."""
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
     )
-    chunks = text_splitter.split_documents(documents)
-    logger.info(f"Split into {len(chunks)} chunks")
 
-    # Create embeddings with OpenAI
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    split_docs = text_splitter.split_documents(documents)
+    logger.info(f"Split into {len(split_docs)} chunks")
+    return split_docs
 
-    # Create FAISS index from documents
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-
-    # Save the vectorstore
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    vectorstore.save_local(DB_PATH)
-    logger.info(f"Vector store saved to {DB_PATH}")
-
-    return vectorstore
-
-async def load_vectorstore() -> Optional[FAISS]:
-    """
-    Load existing vector store or create new one
-    """
+def create_vector_store(documents: List[Document]) -> FAISS:
+    """Create a FAISS vector store from documents."""
     try:
-        if os.path.exists(DB_PATH):
-            logger.info(f"Loading existing vector store from {DB_PATH}")
-            embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-            return FAISS.load_local(DB_PATH, embeddings)
+        embeddings = OpenAIEmbeddings()
+        vector_store = FAISS.from_documents(documents, embeddings)
+        logger.info("Vector store created successfully")
+        return vector_store
+    except Exception as e:
+        logger.error(f"Error creating vector store: {str(e)}")
+        raise
+
+def save_vector_store(vector_store: FAISS, path: str = VECTOR_STORE_PATH):
+    """Save the vector store to disk."""
+    try:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        vector_store.save_local(path)
+        logger.info(f"Vector store saved to {path}")
+    except Exception as e:
+        logger.error(f"Error saving vector store: {str(e)}")
+
+def load_vector_store(path: str = VECTOR_STORE_PATH):
+    """Load the vector store from disk."""
+    try:
+        if os.path.exists(path):
+            embeddings = OpenAIEmbeddings()
+            vector_store = FAISS.load_local(path, embeddings)
+            logger.info(f"Vector store loaded from {path}")
+            return vector_store
+        else:
+            logger.warning(f"Vector store not found at {path}")
+            return None
     except Exception as e:
         logger.error(f"Error loading vector store: {str(e)}")
+        return None
 
-    logger.info("Creating new vector store")
-    return await create_vectorstore()
+def initialize_vector_store() -> FAISS:
+    """Initialize or load the vector store."""
+    # Try to load existing vector store
+    vector_store = load_vector_store()
 
-async def get_vectorstore() -> FAISS:
-    """
-    Get or create the vector store
-    """
-    global _vectorstore
+    # If no vector store exists, create a new one
+    if vector_store is None:
+        logger.info("Creating new vector store...")
+        documents = load_documents()
+        split_docs = split_documents(documents)
+        vector_store = create_vector_store(split_docs)
+        save_vector_store(vector_store)
 
-    if _vectorstore is None:
-        _vectorstore = await load_vectorstore()
-
-    return _vectorstore
-
-async def search_documents(query: str, k: int = 5) -> List[Any]:
-    """
-    Search documents in the vector store
-    """
-    vectorstore = await get_vectorstore()
-    results = vectorstore.similarity_search(query, k=k)
-    return results
+    return vector_store

@@ -1,12 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'react-toastify';
 import '../styles/ChatBox.css';
 
 const ChatBox = () => {
-	// States
-	const [messages, setMessages] = useState([]);
-	const [input, setInput] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
-	const messagesEndRef = useRef(null);
+	// State for messages, input value, and loading state
+	const [messages, setMessages] = useState([
+		{
+			role: 'assistant',
+			content:
+				"Hello! I'm your AI assistant. How can I help you with information about the Katomaran Hackathon?",
+		},
+	]);
+	const [inputValue, setInputValue] = useState('');
+	const [isTyping, setIsTyping] = useState(false);
+
+	// Ref for chat history div to scroll to bottom
+	const chatHistoryRef = useRef(null);
+	// Ref for EventSource to close it when component unmounts
 	const eventSourceRef = useRef(null);
 
 	// Scroll to bottom when messages change
@@ -23,118 +33,94 @@ const ChatBox = () => {
 		};
 	}, []);
 
+	// Scroll to bottom of chat
 	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+		if (chatHistoryRef.current) {
+			chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+		}
 	};
 
+	// Handle form submission
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		if (!input.trim()) return;
 
-		const userMessage = input.trim();
-		setInput('');
+		// Don't send empty messages
+		if (!inputValue.trim()) return;
 
 		// Add user message to chat
-		setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+		const userMessage = { role: 'user', content: inputValue };
+		setMessages((prev) => [...prev, userMessage]);
 
-		// Add empty assistant message that will be filled as the stream arrives
-		setMessages((prev) => [
-			...prev,
-			{ role: 'assistant', content: '', pending: true },
-		]);
-
-		setIsLoading(true);
+		// Clear input and show typing indicator
+		setInputValue('');
+		setIsTyping(true);
 
 		try {
-			// Close existing connection if any
+			// Close any existing connection
 			if (eventSourceRef.current) {
 				eventSourceRef.current.close();
 			}
 
-			// Create new EventSource connection
-			eventSourceRef.current = new EventSource(
-				`http://localhost:8001/chat?query=${encodeURIComponent(userMessage)}`
+			// Create a new EventSource connection for server-sent events
+			const encodedQuery = encodeURIComponent(userMessage.content);
+			const eventSource = new EventSource(
+				`http://localhost:5002/chat?query=${encodedQuery}`
 			);
+			eventSourceRef.current = eventSource;
 
-			// Define what happens when we receive data
-			eventSourceRef.current.onmessage = (event) => {
-				const data = JSON.parse(event.data);
+			// Create a temporary message for streaming content
+			const tempMessage = { role: 'assistant', content: '' };
+			setMessages((prev) => [...prev, tempMessage]);
 
-				// Update the last message (assistant's message)
-				setMessages((prevMessages) => {
-					const newMessages = [...prevMessages];
-					const lastMessageIndex = newMessages.length - 1;
+			// Handle incoming message chunks
+			eventSource.onmessage = (event) => {
+				try {
+					const data = JSON.parse(event.data);
 
-					if (
-						lastMessageIndex >= 0 &&
-						newMessages[lastMessageIndex].role === 'assistant'
-					) {
-						newMessages[lastMessageIndex] = {
-							...newMessages[lastMessageIndex],
-							content:
-								(newMessages[lastMessageIndex].content || '') +
-								(data.content || ''),
-							pending: false,
-						};
+					// Check if it's the end of the stream
+					if (data.end) {
+						eventSource.close();
+						setIsTyping(false);
+						return;
 					}
 
-					return newMessages;
-				});
-			};
-
-			// Handle errors
-			eventSourceRef.current.onerror = (error) => {
-				console.error('EventSource error:', error);
-				eventSourceRef.current.close();
-				setIsLoading(false);
-
-				// Update the last message to show the error
-				setMessages((prevMessages) => {
-					const newMessages = [...prevMessages];
-					const lastMessageIndex = newMessages.length - 1;
-
-					if (
-						lastMessageIndex >= 0 &&
-						newMessages[lastMessageIndex].role === 'assistant' &&
-						newMessages[lastMessageIndex].pending
-					) {
-						newMessages[lastMessageIndex] = {
-							...newMessages[lastMessageIndex],
-							content: 'Sorry, there was an error processing your request.',
-							pending: false,
-							error: true,
-						};
+					// Handle error message
+					if (data.error) {
+						toast.error(`Error: ${data.error}`);
+						eventSource.close();
+						setIsTyping(false);
+						return;
 					}
 
-					return newMessages;
-				});
+					// Update the assistant's message as chunks arrive
+					if (data.content) {
+						setMessages((prev) => {
+							const newMessages = [...prev];
+							// Find the last assistant message and append to it
+							for (let i = newMessages.length - 1; i >= 0; i--) {
+								if (newMessages[i].role === 'assistant') {
+									newMessages[i].content += data.content;
+									break;
+								}
+							}
+							return newMessages;
+						});
+					}
+				} catch (error) {
+					console.error('Error parsing SSE message:', error);
+				}
 			};
 
-			// When the stream is done
-			eventSourceRef.current.addEventListener('end', () => {
-				eventSourceRef.current.close();
-				setIsLoading(false);
-			});
+			// Handle connection errors
+			eventSource.onerror = () => {
+				toast.error('Connection to AI assistant lost. Please try again.');
+				eventSource.close();
+				setIsTyping(false);
+			};
 		} catch (error) {
 			console.error('Error sending message:', error);
-			setIsLoading(false);
-
-			// Update last message on error
-			setMessages((prevMessages) => {
-				const newMessages = [...prevMessages];
-				const lastIndex = newMessages.length - 1;
-
-				if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
-					newMessages[lastIndex] = {
-						...newMessages[lastIndex],
-						content: 'Sorry, there was an error processing your request.',
-						pending: false,
-						error: true,
-					};
-				}
-
-				return newMessages;
-			});
+			toast.error('Failed to send message. Please try again.');
+			setIsTyping(false);
 		}
 	};
 
@@ -142,47 +128,47 @@ const ChatBox = () => {
 		<div className='chat-container'>
 			<div className='chat-header'>
 				<h2>AI Assistant</h2>
-				<p>Ask me anything about the event!</p>
+				<p>Ask me anything about the Hackathon!</p>
 			</div>
 
-			<div className='chat-messages'>
-				{messages.length === 0 ? (
-					<div className='empty-chat'>
-						<p>No messages yet. Start a conversation!</p>
+			<div className='chat-history' ref={chatHistoryRef}>
+				{messages.map((message, index) => (
+					<div key={index} className={`chat-message ${message.role}`}>
+						<div className='avatar'>
+							{message.role === 'assistant' ? '🤖' : '👤'}
+						</div>
+						<div className='message-content'>{message.content}</div>
 					</div>
-				) : (
-					messages.map((message, index) => (
-						<div
-							key={index}
-							className={`message ${
-								message.role === 'user' ? 'user-message' : 'assistant-message'
-							} ${message.pending ? 'pending' : ''}`}>
-							<div className='message-content'>
-								{message.content || (message.pending ? 'Thinking...' : '')}
-								{message.pending && (
-									<span className='typing-indicator'>
-										<span className='dot'></span>
-										<span className='dot'></span>
-										<span className='dot'></span>
-									</span>
-								)}
+				))}
+
+				{isTyping && (
+					<div className='chat-message assistant'>
+						<div className='avatar'>🤖</div>
+						<div className='message-content'>
+							<div className='typing-indicator'>
+								<span></span>
+								<span></span>
+								<span></span>
 							</div>
 						</div>
-					))
+					</div>
 				)}
-				<div ref={messagesEndRef} />
 			</div>
 
 			<form className='chat-input-form' onSubmit={handleSubmit}>
 				<input
 					type='text'
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					placeholder='Type your message...'
-					disabled={isLoading}
+					value={inputValue}
+					onChange={(e) => setInputValue(e.target.value)}
+					placeholder='Type your question here...'
+					disabled={isTyping}
+					className='chat-input'
 				/>
-				<button type='submit' disabled={isLoading || !input.trim()}>
-					{isLoading ? 'Sending...' : 'Send'}
+				<button
+					type='submit'
+					disabled={isTyping || !inputValue.trim()}
+					className='chat-submit-button'>
+					Send
 				</button>
 			</form>
 		</div>
