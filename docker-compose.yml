@@ -1,38 +1,71 @@
 version: '3.9'
 
 services:
-  face-recognition:
-    build: ./services/face-registration
+  face-registration:
+    build:
+      context: ./services/face-registration
+      dockerfile: Dockerfile
     container_name: face-recognition-service
     ports:
-      - '8000:8000'
+      - '5001:5001'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - RAG_SERVICE_URL=http://rag-engine:5002
     volumes:
-      - ./data:/app/data
+      - ./services/face-registration/data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - face-recognition-network
+    restart: unless-stopped
+
+  rag-engine:
+    build:
+      context: ./services/rag-engine
+      dockerfile: Dockerfile
+    container_name: rag-engine-service
+    ports:
+      - '5002:5002'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./services/rag-engine/data:/app/data
+      - ./logs:/app/logs
     networks:
       - face-recognition-network
     restart: unless-stopped
 
   backend:
-    build: ./apps/backend
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
     container_name: backend-service
     ports:
       - '3001:3001'
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - FACE_SERVICE_URL=http://face-registration:5001
+      - RAG_SERVICE_URL=http://rag-engine:5002
     volumes:
       - ./logs:/app/logs
     depends_on:
-      - face-recognition
+      - face-registration
+      - rag-engine
     networks:
       - face-recognition-network
-    environment:
-      - PYTHON_SERVICE_URL=http://face-recognition:8000
-      - PORT=3001
     restart: unless-stopped
 
   frontend:
-    build: ./apps/frontend
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
     container_name: frontend-service
     ports:
-      - '3000:3000'
+      - '5173:5173'
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_WEBSOCKET_URL=ws://localhost:3001/ws
     depends_on:
       - backend
     networks:

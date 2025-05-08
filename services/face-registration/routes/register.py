@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import os
 from typing import Dict, List, Any
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
 from utils.encoding import decode_base64_image, encode_face
@@ -15,6 +16,9 @@ router = APIRouter()
 # Create data directory if it doesn't exist
 os.makedirs(os.path.join("data"), exist_ok=True)
 ENCODINGS_FILE = os.path.join("data", "encodings.json")
+
+# RAG service URL
+RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:8080")
 
 # Define request model
 class RegistrationRequest(BaseModel):
@@ -54,6 +58,20 @@ def save_encoding(encoding_data: Dict[str, Any]):
     with open(ENCODINGS_FILE, 'w') as f:
         json.dump(encodings, f, indent=2)
 
+async def notify_rag_service(event: Dict[str, Any]):
+    """Notify RAG service of new face registration event."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{RAG_SERVICE_URL}/event",
+                json=event,
+                timeout=5.0
+            )
+            response.raise_for_status()
+    except Exception as e:
+        logger.error(f"Failed to notify RAG service: {str(e)}")
+        # Don't raise the error - we don't want to fail registration if RAG notification fails
+
 @router.post("/register", response_model=RegistrationResponse)
 async def register_face(request: RegistrationRequest):
     logger.info(f"Processing registration request for user: {request.name}")
@@ -84,6 +102,15 @@ async def register_face(request: RegistrationRequest):
 
         # Save the encoding
         save_encoding(encoding_data)
+
+        # Notify RAG service about the new registration
+        event_data = {
+            "id": user_id,
+            "name": request.name,
+            "timestamp": timestamp,
+            "type": "registration"
+        }
+        await notify_rag_service(event_data)
 
         logger.info(f"Successfully registered face for user: {request.name}, ID: {user_id}")
         return RegistrationResponse(

@@ -1,7 +1,7 @@
 [project]
-name = "Face-Registration"
+name = "face-registration"
 version = "1.0.0"
-description = "API for face registration and recognition"
+description = "Face recognition service for registration and matching"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,7 +15,16 @@ dependencies = [
     "python-jose>=3.4.0",
     "python-multipart>=0.0.20",
     "uvicorn>=0.34.2",
+    "httpx>=0.25.0",
 ]
 
 [tool.uv.sources]
 dlib = { path = "dlib-19.24.99-cp312-cp312-win_amd64.whl" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"

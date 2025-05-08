@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import RAG modules
-from rag.index import initialize_vector_store
+from rag.index import initialize_vector_store, save_face_event
 from rag.chat import stream_answer
 
 # Configure logging
@@ -132,6 +132,37 @@ async def chat(request: Request):
         return {"success": True}
     except Exception as e:
         logger.error(f"Error in chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/event")
+async def receive_event(request: Request):
+    """
+    Receive and process face registration events.
+
+    Args:
+        request: The HTTP request containing the event data
+
+    Returns:
+        Dict: A success indicator
+    """
+    try:
+        event = await request.json()
+
+        # Validate event data
+        required_fields = ['id', 'name', 'timestamp', 'type']
+        if not all(field in event for field in required_fields):
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required fields in event data"
+            )
+
+        # Save event and update vector store
+        save_face_event(event)
+
+        return {"success": True, "message": "Event processed successfully"}
+
+    except Exception as e:
+        logger.error(f"Error processing event: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -2,6 +2,8 @@ import os
 import logging
 from typing import List, Optional, Dict
 import glob
+import json
+from datetime import datetime
 
 from langchain_community.document_loaders import (
     TextLoader,
@@ -18,10 +20,40 @@ logger = logging.getLogger(__name__)
 # Define paths for documents and vector store
 DOCS_DIR = os.path.join(os.getcwd(), '../..', 'docs')
 VECTOR_STORE_PATH = os.path.join(os.getcwd(), 'vector_store')
+EVENTS_FILE = os.path.join(os.getcwd(), 'data', 'face_events.json')
 
 # Constants for document splitting
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
+
+# Ensure data directory exists
+os.makedirs(os.path.dirname(EVENTS_FILE), exist_ok=True)
+
+def load_face_events() -> List[Dict]:
+    """Load face registration events from JSON file."""
+    if os.path.exists(EVENTS_FILE):
+        with open(EVENTS_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_face_event(event: Dict):
+    """Save a new face registration event."""
+    events = load_face_events()
+    events.append(event)
+    with open(EVENTS_FILE, 'w') as f:
+        json.dump(events, f, indent=2)
+
+    # Convert event to document for vector store
+    doc = Document(
+        page_content=f"{event['name']} was registered at {event['timestamp']}",
+        metadata={"type": "face_event", "event_id": event['id']}
+    )
+
+    # Update vector store with new event
+    vector_store = load_vector_store()
+    if vector_store:
+        vector_store.add_documents([doc])
+        save_vector_store(vector_store)
 
 def get_document_loader(file_path: str):
     """Return the appropriate document loader based on file extension."""
