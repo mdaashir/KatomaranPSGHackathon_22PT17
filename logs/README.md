@@ -1,6 +1,6 @@
 # Logs
 
-Structured JSON logs for the Face Recognition Platform.
+Structured JSON logs for the Face Recognition Platform (2025).
 
 ## Log Types
 

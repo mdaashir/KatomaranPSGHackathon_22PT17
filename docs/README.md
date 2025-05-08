@@ -1,6 +1,6 @@
 # Documentation
 
-Technical documentation for the Face Recognition Platform.
+Technical documentation for the Face Recognition Platform (2025).
 
 ## Contents
 

@@ -1,6 +1,6 @@
 # Database
 
-MongoDB database schemas and migration scripts for the Face Recognition Platform.
+MongoDB database schemas and migration scripts for the Face Recognition Platform (2025).
 
 ## Schema
 
@@ -31,6 +31,4 @@ The database layer is designed to be replaceable with minimal changes to other c
 
 ## Development
 
-```
-# Database setup instructions will be added
-```
+See [DEVELOPMENT.md](../docs/DEVELOPMENT.md) for setup instructions.

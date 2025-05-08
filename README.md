@@ -29,7 +29,7 @@ This monorepo contains the following components:
 - **Scripts**: Utility scripts for development, deployment, and maintenance
 - **Docs**: Architecture diagrams and technical documentation
 
-## System Requirements
+## System Requirements (2025)
 
 - Docker and Docker Compose (v2.0.0+)
 - Node.js 18.0.0+ (for local development)
@@ -37,6 +37,7 @@ This monorepo contains the following components:
 - MongoDB 6.0+ (for local development without Docker)
 - 8GB+ RAM recommended for running all services
 - CUDA-capable GPU recommended but not required
+- Windows, macOS, or Linux supported
 
 ## Quick Start
 
@@ -98,7 +99,7 @@ API documentation is available at:
 - REST API: http://localhost:3001/api-docs
 - WebSocket API: See [WebSocket API Documentation](./docs/WEBSOCKET.md)
 
-## Performance Metrics
+## Performance Metrics (2025)
 
 - Face Recognition: 250ms average response time
 - RAG Engine: ~1.5s average response time

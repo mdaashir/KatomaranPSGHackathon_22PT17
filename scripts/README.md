@@ -1,6 +1,6 @@
 # Scripts
 
-Utility scripts for development, deployment, and maintenance of the Face Recognition Platform.
+Utility scripts for development, deployment, and maintenance of the Face Recognition Platform (2025).
 
 ## Categories
 

@@ -1,6 +1,6 @@
 # Face Recognition Platform - Frontend
 
-This is the frontend application for the Face Recognition Platform, built using React, Vite, and modern web technologies.
+This is the frontend application for the Face Recognition Platform, built using React, Vite, and modern web technologies (2025).
 
 ## Features
 
@@ -12,8 +12,9 @@ This is the frontend application for the Face Recognition Platform, built using 
 
 ## Tech Stack
 
-- **React**: UI library
+- **React 18+**: UI library
 - **Vite**: Build tool
+- **Tailwind CSS**: Utility-first CSS framework
 - **react-webcam**: For webcam integration
 - **axios**: API client for HTTP requests
 - **react-toastify**: Toast notifications
@@ -40,35 +41,30 @@ src/
 
 ### Prerequisites
 
-- Node.js 14+ and npm
+- Node.js 18+ and npm
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
 ```
 
 ### Development
 
 ```bash
-# Start development server
 npm run dev
 ```
 
 ### Building for Production
 
 ```bash
-# Build for production
 npm run build
-
-# Preview production build
 npm run preview
 ```
 
 ## API Integration
 
-The application is designed to work with the backend API running at `http://localhost:3001/api`.
+The application is designed to work with the backend API running at http://localhost:3001/api.
 The API base URL can be configured via the `VITE_API_URL` environment variable.
 
 ## Accessibility
