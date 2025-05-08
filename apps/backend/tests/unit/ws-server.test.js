@@ -43,14 +43,10 @@ describe('WebSocket Server', () => {
 		}
 
 		// Close server if running
-		if (server.listening) {
-			server.close(done);
-		} else {
-			done();
-		}
+		server.close(() => done());
 	});
 
-	test('should establish a connection', (done) => {
+	test('should establish a connection successfully', (done) => {
 		// Create WebSocket client
 		client = new WebSocket(wsUrl);
 
@@ -65,7 +61,7 @@ describe('WebSocket Server', () => {
 		});
 	});
 
-	test('should send welcome message on connection', (done) => {
+	test('should send a welcome message upon connection', (done) => {
 		// Create WebSocket client
 		client = new WebSocket(wsUrl);
 
@@ -116,7 +112,7 @@ describe('WebSocket Server', () => {
 		});
 	});
 
-	test('should track client connections', (done) => {
+	test('should track client connections accurately', (done) => {
 		// Create WebSocket client
 		client = new WebSocket(wsUrl);
 
@@ -144,7 +140,7 @@ describe('WebSocket Server', () => {
 		});
 	});
 
-	test('should broadcast message to all clients', (done) => {
+	test('should broadcast messages to all connected clients', (done) => {
 		const messageCount = {
 			client1: 0,
 			client2: 0,
@@ -201,7 +197,7 @@ describe('WebSocket Server', () => {
 		});
 	});
 
-	test('should provide client statistics', (done) => {
+	test('should provide accurate client statistics', (done) => {
 		// Create WebSocket client
 		client = new WebSocket(wsUrl);
 

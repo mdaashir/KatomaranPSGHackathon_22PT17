@@ -64,10 +64,9 @@ cd apps/frontend
 npm test
 ```
 
-#### Component Testing Example
+#### Component Testing Example (2025)
 
 ```jsx
-// Example test for FaceRegistrationForm.test.jsx
 import { render, screen, fireEvent } from '@testing-library/react';
 import FaceRegistrationForm from '../components/FaceRegistrationForm';
 
@@ -95,7 +94,7 @@ describe('FaceRegistrationForm', () => {
 });
 ```
 
-### End-to-End Testing with Cypress
+### End-to-End Testing with Cypress (2025)
 
 Setup Cypress tests:
 
@@ -157,6 +156,34 @@ Run E2E tests with:
 
 ```bash
 npx cypress run
+```
+
+### Accessibility Testing (2025)
+
+Add axe-core to the project:
+
+```bash
+cd apps/frontend
+npm install --save-dev @axe-core/react
+```
+
+Create accessibility tests:
+
+```jsx
+import React from 'react';
+import { render } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+import FaceRegistrationForm from '../components/FaceRegistrationForm';
+
+expect.extend(toHaveNoViolations);
+
+describe('Accessibility tests', () => {
+	it('should not have accessibility violations', async () => {
+		const { container } = render(<FaceRegistrationForm />);
+		const results = await axe(container);
+		expect(results).toHaveNoViolations();
+	});
+});
 ```
 
 ## Backend Testing
@@ -267,19 +294,18 @@ describe('WebSocket Server', () => {
 
 ## Face Recognition Service Testing
 
-### Unit Testing with pytest
+### Unit Testing with pytest (2025)
 
 Run tests:
 
 ```bash
-cd services/face-recognition
-python -m pytest
+cd services/face-registration
+pytest
 ```
 
 #### Example Face Recognition Test
 
 ```python
-# test_encoding.py
 import pytest
 import numpy as np
 from utils.encoding import encode_face, compare_faces
@@ -295,27 +321,28 @@ def test_encode_face(sample_image):
     assert len(encoding) == 128  # dlib creates 128-dimensional face encodings
 
 def test_compare_faces():
-    # Create two similar face encodings
     encoding1 = np.random.rand(128)
     encoding2 = encoding1 + np.random.normal(0, 0.1, 128)
-
-    # Create a completely different encoding
     encoding3 = np.random.rand(128)
-
-    # Test comparison
     similarity12 = compare_faces(encoding1, encoding2)
     similarity13 = compare_faces(encoding1, encoding3)
-
-    # Similar encodings should have higher similarity
     assert similarity12 > similarity13
 ```
 
 ## RAG Engine Testing
 
-### Testing the RAG Engine
+### Unit Testing with pytest (2025)
+
+Run tests:
+
+```bash
+cd services/rag-engine
+pytest
+```
+
+#### Example RAG Engine Test
 
 ```python
-# test_rag.py
 import pytest
 from rag.index import create_index, query_index
 from rag.chat import generate_response
@@ -339,12 +366,10 @@ def test_query_index(sample_data):
 
 @pytest.mark.asyncio
 async def test_generate_response(mocker):
-    # Mock the OpenAI API call
     mock_completion = mocker.patch("openai.ChatCompletion.create")
     mock_completion.return_value = {
         "choices": [{"message": {"content": "John Doe is a software engineer."}}]
     }
-
     response = await generate_response("Who is John Doe?", ["John Doe is a software engineer."])
     assert "software engineer" in response
 ```
@@ -396,73 +421,90 @@ describe('API and WebSocket Integration', () => {
 
 ## Performance Testing
 
-### Load Testing with k6
+### Load Testing with k6 (2025)
 
 Create a k6 test file:
 
 ```javascript
-// performance/load-test.js
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { Rate } from 'k6/metrics';
+
+const errorRate = new Rate('errors');
 
 export const options = {
 	stages: [
-		{ duration: '30s', target: 20 }, // Ramp up to 20 users over 30 seconds
-		{ duration: '1m', target: 20 }, // Stay at 20 users for 1 minute
-		{ duration: '30s', target: 0 }, // Ramp down to 0 users
+		{ duration: '1m', target: 50 },
+		{ duration: '3m', target: 50 },
+		{ duration: '1m', target: 100 },
+		{ duration: '3m', target: 100 },
+		{ duration: '1m', target: 0 },
 	],
 	thresholds: {
-		http_req_duration: ['p(95)<500'], // 95% of requests should complete within 500ms
+		http_req_duration: ['p(95)<500'],
+		errors: ['rate<0.1'],
 	},
 };
 
 export default function () {
-	// Test face recognition endpoint
-	const payload = JSON.stringify({
-		image: 'base64EncodedImageData', // Use a small sample image
-	});
-
-	const params = {
-		headers: { 'Content-Type': 'application/json' },
-	};
-
-	const res = http.post('http://localhost:3001/api/recognize', payload, params);
-
-	check(res, {
-		'status is 200': (r) => r.status === 200,
-		'response time < 500ms': (r) => r.timings.duration < 500,
-	});
+	const healthRes = http.get('http://localhost:3001/health');
+	check(healthRes, {
+		'health check status is 200': (r) => r.status === 200,
+		'health check has correct data': (r) => r.json('status') === 'ok',
+	}) || errorRate.add(1);
 
 	sleep(1);
+
+	const pushRes = http.post(
+		'http://localhost:3001/api/push',
+		JSON.stringify({
+			userId: `user-${Math.floor(Math.random() * 1000)}`,
+			message: 'Test notification message',
+			timestamp: new Date().toISOString(),
+		}),
+		{
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		}
+	);
+	check(pushRes, {
+		'push notification status is 200': (r) => r.status === 200,
+	}) || errorRate.add(1);
+
+	sleep(1);
+
+	const registerRes = http.post(
+		'http://localhost:3001/api/register',
+		JSON.stringify({
+			userId: `load-test-user-${Math.floor(Math.random() * 10000)}`,
+			name: 'Load Test User',
+			email: `loadtest${Math.floor(Math.random() * 10000)}@example.com`,
+		}),
+		{
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		}
+	);
+	check(registerRes, {
+		'register status is 200 or 201': (r) =>
+			r.status === 200 || r.status === 201,
+	}) || errorRate.add(1);
+
+	sleep(Math.random() * 3 + 1);
 }
 ```
 
-Run the load test:
+### Frontend Performance Testing with Lighthouse (2025)
+
+Use the provided Node.js script:
 
 ```bash
-k6 run performance/load-test.js
+node tests/performance/frontend/lighthouse-test.js
 ```
 
-### Stress Testing
-
-```javascript
-// performance/stress-test.js
-import http from 'k6/http';
-import { check, sleep } from 'k6';
-
-export const options = {
-	stages: [
-		{ duration: '2m', target: 100 }, // Ramp up to 100 users over 2 minutes
-		{ duration: '5m', target: 100 }, // Stay at 100 users for 5 minutes
-		{ duration: '2m', target: 0 }, // Ramp down to 0 users
-	],
-};
-
-export default function () {
-	// Similar to load test but with higher concurrency
-	// ...
-}
-```
+This will generate JSON and HTML reports in the `results/` directory and print key metrics to the console.
 
 ## Security Testing
 

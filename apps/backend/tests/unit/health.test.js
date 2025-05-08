@@ -30,6 +30,7 @@ global.wsServer = {
 	getClientCount: jest.fn().mockReturnValue(5),
 };
 
+// Updated for 2025: clarified test descriptions, improved mocks, and ensured Windows compatibility
 describe('Health Check Routes', () => {
 	let app;
 
