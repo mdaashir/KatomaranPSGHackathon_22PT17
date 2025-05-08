@@ -106,6 +106,79 @@ API documentation is available at:
 - WebSocket latency: <50ms
 - System can handle up to 100 concurrent users with recommended hardware
 
+## Project Demo
+
+Watch a demonstration of the application features here: [Demo Video](your-loom-video-link)
+
+## Architecture Diagram
+
+![Architecture Diagram](docs/images/architecture.png)
+
+The architecture diagram shows the interaction between different components:
+
+- Frontend React.js application communicating with backend via REST and WebSocket
+- Backend Node.js server handling API requests and WebSocket connections
+- Face Recognition service for image processing and face matching
+- RAG Engine service for AI-powered Q&A
+- MongoDB for data persistence
+- Redis for caching and session management
+
+## Assumptions
+
+1. **User Management**:
+
+   - Users are managed by administrators
+   - Each user can have multiple face images registered
+   - Face recognition requires good lighting conditions
+
+2. **Performance**:
+
+   - System is designed for up to 100 concurrent users
+   - Face recognition service can handle 10 requests/second
+   - RAG Engine responses within 2 seconds
+
+3. **Security**:
+
+   - All API endpoints require authentication except health checks
+   - Face images are stored securely with encryption
+   - User data is GDPR compliant
+
+4. **Infrastructure**:
+   - Deployment on cloud infrastructure (AWS/GCP/Azure)
+   - Automatic scaling based on load
+   - Daily database backups
+   - 99.9% uptime SLA
+
+## Event Logging
+
+The system implements comprehensive event logging:
+
+1. **Frontend Events**:
+
+   - User interactions
+   - Face capture attempts
+   - Recognition results
+   - Chat interactions
+
+2. **Backend Events**:
+
+   - API requests/responses
+   - WebSocket connections
+   - Authentication events
+   - System health metrics
+
+3. **AI Services Events**:
+   - Face registration/recognition attempts
+   - Processing times
+   - Error rates
+   - Model performance metrics
+
+Logs are stored in the `/logs` directory and can be aggregated using ELK stack or similar tools.
+
+---
+
+This project is a part of a hackathon run by https://katomaran.com
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

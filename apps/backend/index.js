@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const helmet = require('helmet');
+const helmetDefault = require('helmet').default;
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
@@ -10,6 +10,7 @@ const { appLogger } = require('./utils/logger');
 const { metricsMiddleware, metricsEndpoint } = require('./utils/metrics');
 const registerRoutes = require('./routes/register');
 const healthRoutes = require('./routes/health');
+const logsRoutes = require('./routes/logs');
 const { router: pushRouter, setWSServer } = require('./routes/push');
 const createWSServer = require('./ws/server');
 
@@ -24,19 +25,20 @@ const server = http.createServer(app);
 app.use(metricsMiddleware);
 
 // Set security headers
-app.use(
-	helmet({
-		contentSecurityPolicy: {
-			directives: {
-				defaultSrc: ["'self'"],
-				scriptSrc: ["'self'", "'unsafe-inline'"],
-				styleSrc: ["'self'", "'unsafe-inline'"],
-				imgSrc: ["'self'", 'data:', 'blob:'],
-				connectSrc: ["'self'", 'wss:', 'ws:'],
-			},
+const helmetConfig = {
+	contentSecurityPolicy: {
+		directives: {
+			defaultSrc: ["'self'"],
+			scriptSrc: ["'self'", "'unsafe-inline'"],
+			styleSrc: ["'self'", "'unsafe-inline'"],
+			imgSrc: ["'self'", 'data:', 'blob:'],
+			connectSrc: ["'self'", 'wss:', 'ws:'],
 		},
-	})
-);
+	},
+};
+
+// Apply security middleware
+app.use(helmetDefault(helmetConfig));
 
 // Configure CORS with more options
 app.use(
@@ -68,8 +70,14 @@ const accessLogStream = fs.createWriteStream(path.join(logsDir, 'access.log'), {
 });
 
 // Use combined format for file logs, dev format for console
-app.use(morgan('combined', { stream: accessLogStream }));
-app.use(morgan('dev'));
+app.use(
+	/** @type {import('express').RequestHandler} */
+	(morgan('combined', { stream: accessLogStream }))
+);
+app.use(
+	/** @type {import('express').RequestHandler} */
+	(morgan('dev'))
+);
 
 // Metrics endpoint for Prometheus
 app.get('/metrics', metricsEndpoint);
@@ -83,6 +91,7 @@ app.use('/health', healthRoutes);
 // API routes
 app.use('/api', registerRoutes);
 app.use('/api', pushRouter);
+app.use('/logs', logsRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

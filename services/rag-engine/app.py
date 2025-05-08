@@ -1,8 +1,7 @@
 import os
 import json
 import logging
-import asyncio
-from typing import Dict, Any
+from typing import Dict
 from dotenv import load_dotenv
 
 from fastapi import FastAPI, Request, HTTPException
@@ -35,9 +34,15 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    # Add production URLs as needed
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, specify specific origins
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

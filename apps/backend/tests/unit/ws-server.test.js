@@ -67,7 +67,10 @@ describe('WebSocket Server', () => {
 
 		// Listen for messages
 		client.on('message', (data) => {
-			const message = JSON.parse(data);
+			// Ensure Buffer is converted to string for JSON.parse
+			const message = JSON.parse(
+				typeof data === 'string' ? data : data.toString()
+			);
 
 			// Verify structure of welcome message
 			expect(message).toHaveProperty('type', 'connection');
@@ -93,7 +96,10 @@ describe('WebSocket Server', () => {
 
 		// Listen for messages
 		client.on('message', (data) => {
-			const message = JSON.parse(data);
+			// Ensure Buffer is converted to string for JSON.parse
+			const message = JSON.parse(
+				typeof data === 'string' ? data : data.toString()
+			);
 
 			// Skip welcome message
 			if (message.type === 'connection') {
@@ -163,7 +169,10 @@ describe('WebSocket Server', () => {
 
 			// Message handler for first client
 			client.on('message', (data) => {
-				const message = JSON.parse(data);
+				// Ensure Buffer is converted to string for JSON.parse
+				const message = JSON.parse(
+					typeof data === 'string' ? data : data.toString()
+				);
 
 				if (message.type === 'connection') return; // Skip welcome message
 
@@ -176,7 +185,10 @@ describe('WebSocket Server', () => {
 
 			// Message handler for second client
 			client2.on('message', (data) => {
-				const message = JSON.parse(data);
+				// Ensure Buffer is converted to string for JSON.parse
+				const message = JSON.parse(
+					typeof data === 'string' ? data : data.toString()
+				);
 
 				if (message.type === 'connection') return; // Skip welcome message
 
