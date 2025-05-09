@@ -1,179 +1,97 @@
 .face-list-container {
-	max-width: 800px;
-	margin: 0 auto;
-	padding: 1.5rem;
-	background-color: white;
-	border-radius: 8px;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+	@apply max-w-4xl mx-auto my-8;
+	@apply card;
 }
 
-.face-list-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 1.5rem;
-	padding-bottom: 1rem;
-	border-bottom: 1px solid #e5e7eb;
+.list-header {
+	@apply flex items-center justify-between mb-6;
 }
 
-.face-list-header h2 {
-	margin: 0;
-	color: #111827;
-	font-size: 1.5rem;
+.list-title {
+	@apply text-2xl font-semibold text-gray-900 dark:text-gray-100;
 }
 
-.face-count {
-	background-color: #f3f4f6;
-	padding: 0.25rem 0.75rem;
-	border-radius: 9999px;
-	font-size: 0.875rem;
-	font-weight: 500;
-	color: #4b5563;
-}
-
-.search-bar {
-	margin-bottom: 1.5rem;
-}
-
-.search-bar input {
-	width: 100%;
-	padding: 0.75rem;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
-	font-size: 1rem;
-	outline: none;
-	transition: border-color 0.2s;
-}
-
-.search-bar input:focus {
-	border-color: #3b82f6;
-	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.face-list {
-	list-style: none;
-	padding: 0;
-	margin: 0;
+.face-grid {
+	@apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6;
 }
 
 .face-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 0.75rem;
-	border-bottom: 1px solid #e5e7eb;
+	@apply bg-white dark:bg-gray-800 rounded-xl shadow-sm;
+	@apply border border-gray-200 dark:border-gray-700;
+	@apply hover:shadow-md hover:-translate-y-0.5;
+	@apply transition-all duration-200;
 }
 
-.face-item:last-child {
-	border-bottom: none;
+.face-image {
+	@apply w-full aspect-square object-cover rounded-t-xl;
+	@apply bg-gray-100 dark:bg-gray-700;
+}
+
+.face-info {
+	@apply p-4;
 }
 
 .face-name {
-	font-size: 1rem;
-	color: #111827;
+	@apply text-lg font-medium text-gray-900 dark:text-gray-100 mb-1;
+}
+
+.face-meta {
+	@apply text-sm text-gray-500 dark:text-gray-400;
+}
+
+.face-timestamp {
+	@apply flex items-center gap-1;
+}
+
+.face-actions {
+	@apply mt-4 flex gap-2;
 }
 
 .delete-button {
-	background-color: #ef4444;
-	color: white;
-	border: none;
-	border-radius: 4px;
-	padding: 0.5rem 0.75rem;
-	font-size: 0.875rem;
-	font-weight: 500;
-	cursor: pointer;
-	transition: background-color 0.2s;
+	@apply button button-secondary;
+	@apply bg-red-50 text-red-600 hover:bg-red-100;
+	@apply dark:bg-red-900/10 dark:text-red-400 dark:hover:bg-red-900/20;
 }
 
-.delete-button:hover {
-	background-color: #dc2626;
+.edit-button {
+	@apply button button-secondary;
 }
 
-.confirmation-modal {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: rgba(0, 0, 0, 0.5);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 100;
+.empty-state {
+	@apply text-center py-12;
 }
 
-.confirmation-content {
-	background-color: white;
-	padding: 1.5rem;
-	border-radius: 8px;
-	max-width: 400px;
-	width: 90%;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.empty-icon {
+	@apply w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600;
 }
 
-.confirmation-content h3 {
-	margin-top: 0;
-	color: #111827;
-	font-size: 1.25rem;
+.empty-text {
+	@apply text-lg text-gray-600 dark:text-gray-400;
 }
 
-.confirmation-actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: 1rem;
-	margin-top: 1.5rem;
+.empty-subtext {
+	@apply mt-2 text-gray-500 dark:text-gray-500;
 }
 
-.btn-cancel {
-	background-color: transparent;
-	color: #4b5563;
-	border: 1px solid #d1d5db;
-	padding: 0.5rem 1rem;
-	border-radius: 4px;
-	font-size: 0.875rem;
-	font-weight: 500;
-	cursor: pointer;
+.loading-state {
+	@apply flex items-center justify-center py-12;
 }
 
-.btn-cancel:hover {
-	background-color: #f3f4f6;
+.loading-spinner {
+	@apply w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full;
+	@apply animate-spin;
 }
 
-.btn-delete {
-	background-color: #ef4444;
-	color: white;
-	border: none;
-	padding: 0.5rem 1rem;
-	border-radius: 4px;
-	font-size: 0.875rem;
-	font-weight: 500;
-	cursor: pointer;
-}
+@media (max-width: 640px) {
+	.face-list-container {
+		@apply m-4;
+	}
 
-.btn-delete:hover {
-	background-color: #dc2626;
-}
+	.list-header {
+		@apply flex-col gap-4;
+	}
 
-.face-list-loading {
-	display: flex;
-	justify-content: center;
-	padding: 2rem;
-	color: #6b7280;
-	font-size: 1rem;
-}
-
-.face-list-error {
-	color: #dc2626;
-	text-align: center;
-	padding: 2rem;
-	background-color: #fef2f2;
-	border-radius: 6px;
-}
-
-.no-faces {
-	text-align: center;
-	color: #6b7280;
-	padding: 2rem;
-	background-color: #f9fafb;
-	border-radius: 6px;
+	.face-grid {
+		@apply grid-cols-1;
+	}
 }
